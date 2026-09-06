@@ -1,0 +1,14 @@
+# Binaries
+/bin/
+worker
+producer
+*.exe
+*.out
+
+# Environment & Secrets
+.env
+*.pem
+
+# IDE / Editor folders
+.vscode/
+.idea/
