@@ -8,46 +8,22 @@ This project implements a serverless, decoupled Go backend microservice designed
 ## 1. High-Level Architecture Diagram
 
 ```text
- ┌─────────────────┐       1. Send Prompt        ┌──────────────────────────────┐
- │  cmd/producer   │ ──────────────────────────► │ AWS SQS FIFO Queue           │
- │ (Go CLI/Client) │                             │                              │
- └─────────────────┘                             └──────────────┬───────────────┘
-                                                                │
-                                                                │ 2. Long Poll
-                                                                │    WaitTime: 20s
-                                                                ▼
-┌───────────────────────────────────────────────────────────────────────────────┐
-│  cmd/worker (Go Microservice Engine)                                         │
-│                                                                               │
-│   ┌──────────────────────────────────────────────────────────────────────┐    │
-│   │  SQS Receiver Loop                                                   │    │
-│   └──────────────────────────────────┬───────────────────────────────────┘    │
-│                                      │                                        │
-│                                      │ 3. Push to Channel                     │
-│                                      ▼                                        │
-│   ┌──────────────────────────────────────────────────────────────────────┐    │
-│   │  jobs channel (chan types.Message) [Buffer Size = 6]                 │    │
-│   └──────┬───────────────────────────┬───────────────────────────┬───────┘    │
-│          │                           │                           │            │
-│          │ 4. Compete to Pull        │                           │            │
-│          ▼                           ▼                           ▼            │
-│   ┌──────────────┐            ┌──────────────┐            ┌──────────────┐    │
-│   │ Worker Gorut.│            │ Worker Gorut.│            │ Worker Gorut.│    │
-│   │   [ID: 1]    │            │   [ID: 2]    │            │   [ID: 3]    │    │
-│   └──────┬───────┘            └──────┬───────┘            └──────┬───────┘    │
-└──────────┼───────────────────────────┼───────────────────────────┼────────────┘
-           │                           │                           │
-           └───────────────────────────┼───────────────────────────┘
-                                       │ 5. Invoke Bedrock API
-                                       ▼
-                         ┌──────────────────────────────┐
-                         │ Amazon Bedrock Runtime       │
-                         │ (Amazon Nova / Claude)       │
-                         └──────────────┬───────────────┘
-                                        │
-                                        │ 6. Write Response (Phase 3 Target)
-                                        ▼
-                         ┌──────────────────────────────┐
-                         │ Result Store                 │
-                         │ (DynamoDB / S3)              │
-                         └──────────────────────────────┘
+[ Client Application ]
+          │
+          ├─► POST /jobs ───────────► [ REST API Gateway ] ────► [ DynamoDB: PENDING ]
+          │                           (cmd/api - Gin)                  │
+          │                                 │                          │
+          │                                 ▼                          │
+          │                           [ SQS FIFO Queue ] ──────────────┘
+          │                           (rag-jobs.fifo)
+          │                                 │
+          │                                 ▼
+          │                           [ Concurrent Worker Pool ]
+          │                           (cmd/worker - Go Goroutines)
+          │                                 │
+          │                        ┌────────┴────────┐
+          │                        ▼                 ▼
+          │               [ Amazon Bedrock ]  [ DynamoDB Store ]
+          │               (Claude/Nova model) (PROCESSING -> COMPLETED)
+          │                                          ▲
+          └─► GET /jobs/:job_id ─────────────────────┘
