@@ -1,4 +1,4 @@
-# Enterprise Asynchronous LLM Inference Platform in Go & AWS
+# Asynchronous LLM Inference Platform in Go & AWS
 
 A high-throughput, cloud-native asynchronous Large Language Model (LLM) inference engine built with **Go (Golang)**, **AWS SQS FIFO**, **AWS Bedrock**, and **Amazon DynamoDB**.
 
@@ -67,7 +67,7 @@ AWS_REGION=us-east-1
 AWS_PROFILE=default
 
 ```
-### 2. Launch Containers
+### Option A: Launch Containers
 
 ```text
 docker compose up --build
@@ -91,29 +91,28 @@ aws dynamodb create-table \
   --billing-mode PAY_PER_REQUEST \
   --region us-east-1
 ```
-Start Services
+## Start Services
 
-Set environment variables:
+### Set environment variables:
 ```text
 export SQS_QUEUE_URL="[https://sqs.us-east-1.amazonaws.com/](https://sqs.us-east-1.amazonaws.com/)<YOUR_ACCOUNT_ID>/rag-jobs.fifo"
 export AWS_REGION="us-east-1"
 ```
-Start the worker engine (Terminal 1):
+### Start the worker engine (Terminal 1):
 
 ```text
 go run cmd/worker/main.go
 ```
-Start the REST API server (Terminal 2):
+### Start the REST API server (Terminal 2):
 
 ```text
  go run cmd/api/main.go
  ```
 ### API Reference
-```
-## 1. Submit Inference Request
+### 1. Submit Inference Request
 
 POST /jobs — Submits a prompt for asynchronous LLM processing.
-## Request Body
+### Request Body
 ```text
 
 {
@@ -121,7 +120,7 @@ POST /jobs — Submits a prompt for asynchronous LLM processing.
   "prompt": "Explain Go concurrency models in 2 sentences."
 }
 ```
-Response (202 Accepted)
+### Response (202 Accepted)
 ```text
 
 {
