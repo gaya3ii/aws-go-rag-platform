@@ -57,24 +57,7 @@ aws-go-rag-platform/
 * [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed.
 * Provisioned SQS FIFO queue and DynamoDB table in AWS.
 
-### 1. Configure Environment Variables
-
-Create a `.env` file in the repository root:
-
-```env
-SQS_QUEUE_URL=[https://sqs.us-east-1.amazonaws.com/](https://sqs.us-east-1.amazonaws.com/)<YOUR_ACCOUNT_ID>/rag-jobs.fifo
-AWS_REGION=us-east-1
-AWS_PROFILE=default
-
-```
-### Option A: Launch Containers
-
-```text
-docker compose up --build
-```
-
-### Option B: Running Natively with Go CLI
-Provision AWS Resources (CLI)
+### Provision AWS Resources (CLI)
 
 ```text
 Create SQS FIFO Queue
@@ -91,13 +74,24 @@ aws dynamodb create-table \
   --billing-mode PAY_PER_REQUEST \
   --region us-east-1
 ```
-## Start Services
 
-### Set environment variables:
-```text
-export SQS_QUEUE_URL="[https://sqs.us-east-1.amazonaws.com/](https://sqs.us-east-1.amazonaws.com/)<YOUR_ACCOUNT_ID>/rag-jobs.fifo"
-export AWS_REGION="us-east-1"
+### 1. Configure Environment Variables
+
+Create a `.env` file in the repository root:
+
+```env
+SQS_QUEUE_URL=[https://sqs.us-east-1.amazonaws.com/](https://sqs.us-east-1.amazonaws.com/)<YOUR_ACCOUNT_ID>/rag-jobs.fifo
+AWS_REGION=us-east-1
+AWS_PROFILE=default
+
 ```
+### Option A: Launch Containers
+
+```text
+docker compose up --build
+```
+## Option B: Start Services
+
 ### Start the worker engine (Terminal 1):
 
 ```text
