@@ -60,7 +60,6 @@ func (w *WorkerPool) Start(ctx context.Context) {
 				WaitTimeSeconds:     20, // Long Polling
 			})
 			if err != nil {
-				// Prevent tight error-looping on temporary context cancellation
 				if ctx.Err() != nil {
 					continue
 				}
@@ -76,18 +75,31 @@ func (w *WorkerPool) Start(ctx context.Context) {
 }
 
 func (w *WorkerPool) processMessage(ctx context.Context, workerID int, msg types.Message) {
-	log.Printf("[Worker %d] Processing job %s with body: %s", workerID, *msg.MessageId, *msg.Body)
-
-	// Invoke Bedrock
-	response, err := w.bedrockClient.GenerateCompletion(ctx, *msg.Body)
-	if err != nil {
-		log.Printf("[Worker %d] Failed to process message %s: %v", workerID, *msg.MessageId, err)
+	if msg.Body == nil {
+		log.Printf("[Worker %d] Received message with nil body, skipping.", workerID)
 		return
 	}
 
-	log.Printf("[Worker %d] Job Complete!\n--- Output ---\n%s\n--------------", workerID, response)
+	// 1. Unmarshal raw SQS JSON payload into our structured InferenceJob
+	job, err := UnmarshalJob(*msg.Body)
+	if err != nil {
+		log.Printf("[Worker %d] Failed to parse job JSON: %v. Raw body: %s", workerID, err, *msg.Body)
+		return
+	}
 
-	// Delete message from SQS upon success
+	log.Printf("[Worker %d] Processing JobID: %s | UserID: %s | Model: %s",
+		workerID, job.JobID, job.UserID, job.ModelID)
+
+	// 2. Invoke Bedrock passing the prompt from our structured job
+	response, err := w.bedrockClient.GenerateCompletion(ctx, job.Prompt)
+	if err != nil {
+		log.Printf("[Worker %d] Failed to process Bedrock request for JobID %s: %v", workerID, job.JobID, err)
+		return
+	}
+
+	log.Printf("[Worker %d] Job %s Complete!\n--- Output ---\n%s\n--------------", workerID, job.JobID, response)
+
+	// 3. Delete message from SQS upon successful processing
 	_, err = w.sqsClient.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 		QueueUrl:      aws.String(w.queueURL),
 		ReceiptHandle: msg.ReceiptHandle,
